@@ -1,2 +1,50 @@
 ---
-# tasks file for ansible-role-skeleton/
+- name: Install Navidrome
+  become: true
+  tags: install
+  block:
+
+    - name: Create navidrome_data volume
+      docker_volume:
+        driver: "local"
+        driver_options:
+          type: nfs
+          o: "addr={{ nas }},nolock,soft,rw"
+          device: "{{ navidrome_data_nfs }}"
+        volume_name: navidrome_data
+
+    - name: Create navidrome_music volume
+      docker_volume:
+        driver: "local"
+        driver_options:
+          type: nfs
+          o: "addr={{ nas }},nolock,soft,rw"
+          device: "{{ navidrome_music_nfs }}"
+        volume_name: navidrome_music
+
+    - name: Create navidrome container
+      community.docker.docker_container:
+        name: navidrome
+        image: deluan/navidrome:latest
+        user: "{{ navidrome_uid }}:{{ navidrome_gid }}"
+        pull: true
+        restart_policy: unless-stopped
+        volumes:
+          - "navidrome_data:/data"
+          - "navidrome_music:/music:ro"
+        networks:
+          - name: proxy_net
+
+    - name: Setup cron job to stop navidrome for backup
+      ansible.builtin.cron:
+        name: "Pause navidrome for backup"
+        hour: "4"
+        minute: "0"
+        job: "sudo docker stop navidrome"
+
+    - name: Setup cron job to start navidrome after backup
+      ansible.builtin.cron:
+        name: "Resume navidrome after backup"
+        hour: "5"
+        minute: "0"
+        job: "sudo docker start navidrome"
