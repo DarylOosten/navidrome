@@ -4,14 +4,31 @@
   tags: install
   block:
 
-    - name: Create navidrome_data volume
-      docker_volume:
-        driver: "local"
-        driver_options:
-          type: nfs
-          o: "addr={{ nas }},nolock,soft,rw"
-          device: "{{ navidrome_data_nfs }}"
-        volume_name: navidrome_data
+    - name: Add navidrome group
+      ansible.builtin.group:
+        name: navidrome
+        gid: "{{ navidrome_gid }}"
+        state: present
+
+    - name: Add Ansible user to navidrome
+      ansible.builtin.user:
+        name: "{{ user }}"
+        groups: navidrome
+        append: true
+
+    - name: Add navidrome user
+      ansible.builtin.user:
+        name: navidrome
+        uid: "{{ navidrome_uid }}"
+        group: navidrome
+
+    - name: Create navidrome data directory
+      ansible.builtin.file:
+        path: /home/navidrome/data
+        state: directory
+        mode: "770"
+        owner: navidrome
+        group: navidrome
 
     - name: Create navidrome_music volume
       docker_volume:
@@ -30,21 +47,7 @@
         pull: true
         restart_policy: unless-stopped
         volumes:
-          - "navidrome_data:/data"
+          - "/home/navidrome/data:/data"
           - "navidrome_music:/music:ro"
         networks:
           - name: proxy_net
-
-    - name: Setup cron job to stop navidrome for backup
-      ansible.builtin.cron:
-        name: "Pause navidrome for backup"
-        hour: "4"
-        minute: "0"
-        job: "sudo docker stop navidrome"
-
-    - name: Setup cron job to start navidrome after backup
-      ansible.builtin.cron:
-        name: "Resume navidrome after backup"
-        hour: "5"
-        minute: "0"
-        job: "sudo docker start navidrome"
