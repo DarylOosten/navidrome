@@ -4,23 +4,23 @@
   tags: install
   block:
 
-    - name: Add navidrome group
+    - name: Add media group
       ansible.builtin.group:
-        name: navidrome
-        gid: "{{ navidrome_gid }}"
+        name: media
+        gid: "{{ media_gid }}"
         state: present
 
-    - name: Add Ansible user to navidrome
+    - name: Add Ansible user to media
       ansible.builtin.user:
         name: "{{ user }}"
-        groups: navidrome
+        groups: media
         append: true
 
     - name: Add navidrome user
       ansible.builtin.user:
         name: navidrome
         uid: "{{ navidrome_uid }}"
-        group: navidrome
+        group: media
 
     - name: Create navidrome data directory
       ansible.builtin.file:
@@ -28,7 +28,7 @@
         state: directory
         mode: "770"
         owner: navidrome
-        group: navidrome
+        group: media
 
     - name: Create navidrome_music volume
       docker_volume:
@@ -43,7 +43,7 @@
       community.docker.docker_container:
         name: navidrome
         image: deluan/navidrome:latest
-        user: "{{ navidrome_uid }}:{{ navidrome_gid }}"
+        user: "{{ navidrome_uid }}:{{ media_gid }}"
         pull: true
         restart_policy: unless-stopped
         volumes:
